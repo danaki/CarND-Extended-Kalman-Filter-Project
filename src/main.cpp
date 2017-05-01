@@ -3,6 +3,13 @@
 #include <sstream>
 #include <vector>
 #include <stdlib.h>
+
+#include <stdio.h>
+#include <execinfo.h>
+#include <signal.h>
+#include <stdlib.h>
+#include <unistd.h>
+
 #include "Eigen/Dense"
 #include "FusionEKF.h"
 #include "ground_truth_package.h"
@@ -12,6 +19,19 @@ using namespace std;
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
 using std::vector;
+
+void handler(int sig) {
+  void *array[10];
+  size_t size;
+
+  // get void*'s for all entries on the stack
+  size = backtrace(array, 10);
+
+  // print out all the frames to stderr
+  fprintf(stderr, "Error: signal %d:\n", sig);
+  backtrace_symbols_fd(array, size, STDERR_FILENO);
+  exit(1);
+}
 
 void check_arguments(int argc, char* argv[]) {
   string usage_instructions = "Usage instructions: ";
@@ -51,6 +71,8 @@ void check_files(ifstream& in_file, string& in_name,
 
 int main(int argc, char* argv[]) {
 
+  signal(SIGSEGV, handler);
+   
   check_arguments(argc, argv);
 
   string in_file_name_ = argv[1];
@@ -168,8 +190,7 @@ int main(int argc, char* argv[]) {
   }
 
   // compute the accuracy (RMSE)
-  Tools tools;
-  cout << "Accuracy - RMSE:" << endl << tools.CalculateRMSE(estimations, ground_truth) << endl;
+  cout << "Accuracy - RMSE:" << endl << Tools::CalculateRMSE(estimations, ground_truth) << endl;
 
   // close files
   if (out_file_.is_open()) {
